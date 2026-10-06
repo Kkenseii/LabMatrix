@@ -1,11 +1,12 @@
 #pragma once
+#include <cstddef>
 #include <initializer_list>
 #include <algorithm>
 
 #define MEM_STEP 15
 
-inline int calculate_capacity(int size) {
-    if (size <= 0) return 0;
+inline size_t calculate_capacity(size_t size) {
+    if (size == 0) return 0;
     return ((size - 1) / MEM_STEP + 1) * MEM_STEP;
 }
 
@@ -19,9 +20,9 @@ class MemData {
     size_t _capacity;
 
 public:
-    MemData(size_t size = 0);
+    explicit MemData(size_t size = 0);
     MemData(std::initializer_list<T> list);
-    MemData(T* arr, size_t size);
+    MemData(const T* arr, size_t size);
     MemData(const MemData& other);
     MemData(MemData&& other) noexcept;
     ~MemData();
@@ -32,11 +33,11 @@ public:
     size_t capacity() const noexcept { return _capacity; }
     const T* data() const noexcept { return _data; }
 
-    void set_memory(size_t new_capacity) noexcept;
-    void reset_memory(size_t new_capacity, size_t start_index = 0) noexcept;
+    void set_memory(size_t new_capacity);
+    void reset_memory(size_t new_capacity, size_t start_index = 0);
     void clear_memory() noexcept;
 
-    MemData& operator=(const MemData& other) noexcept;
+    MemData& operator=(const MemData& other);
     MemData& operator=(MemData&& other) noexcept;
 
     friend class TVector<T>;
@@ -66,7 +67,7 @@ MemData<T>::MemData(std::initializer_list<T> list)
 }
 
 template<typename T>
-MemData<T>::MemData(T* arr, size_t size)
+MemData<T>::MemData(const T* arr, size_t size)
     : _data(nullptr), _size(0), _capacity(0) {
 
     if (size > 0 && arr) {
@@ -106,7 +107,7 @@ MemData<T>::~MemData() {
 }
 
 template<typename T>
-void MemData<T>::set_memory(size_t new_capacity) noexcept {
+void MemData<T>::set_memory(size_t new_capacity) {
     T* new_data = new_capacity ? new T[new_capacity]() : nullptr;
 
     size_t copy_size = std::min(_size, new_capacity);
@@ -121,7 +122,7 @@ void MemData<T>::set_memory(size_t new_capacity) noexcept {
 }
 
 template<typename T>
-void MemData<T>::reset_memory(size_t new_capacity, size_t start_index) noexcept {
+void MemData<T>::reset_memory(size_t new_capacity, size_t start_index) {
     T* new_data = new_capacity ? new T[new_capacity]() : nullptr;
 
     size_t copy_size = std::min(_size, new_capacity);
@@ -147,16 +148,17 @@ void MemData<T>::clear_memory() noexcept {
 }
 
 template<typename T>
-MemData<T>& MemData<T>::operator=(const MemData& other) noexcept {
+MemData<T>& MemData<T>::operator=(const MemData& other) {
     if (this != &other) {
+        T* new_data = other._capacity ? new T[other._capacity]() : nullptr;
+        for (size_t i = 0; i < other._size; i++) {
+            new_data[i] = other._data[i];
+        }
+
         delete[] _data;
+        _data = new_data;
         _size = other._size;
         _capacity = other._capacity;
-        _data = _capacity ? new T[_capacity]() : nullptr;
-
-        for (size_t i = 0; i < _size; i++) {
-            _data[i] = other._data[i];
-        }
     }
     return *this;
 }

@@ -1,13 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36603.0 d17.14
+VisualStudioVersion = 17.14.36603.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LabMatrix", "LabMatrix\LabMatrix.vcxproj", "{66806C52-FF17-4702-9A08-1FB1A2376FF9}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MatrixTests", "MatrixTests\MatrixTests.vcxproj", "{A0B8A5AA-8D12-44B4-A2FE-C59101C64EA1}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Application", "Application\Application.vcxproj", "{7CC6D80F-7DB7-4796-9558-6022D0D66892}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TMathVector", "TMathVector\TMathVector.vcxproj", "{8EFC74B7-ED7B-485E-B1CB-3BE077164E16}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -41,6 +43,14 @@ Global
 		{7CC6D80F-7DB7-4796-9558-6022D0D66892}.Release|x64.Build.0 = Release|x64
 		{7CC6D80F-7DB7-4796-9558-6022D0D66892}.Release|x86.ActiveCfg = Release|Win32
 		{7CC6D80F-7DB7-4796-9558-6022D0D66892}.Release|x86.Build.0 = Release|Win32
+		{8EFC74B7-ED7B-485E-B1CB-3BE077164E16}.Debug|x64.ActiveCfg = Debug|x64
+		{8EFC74B7-ED7B-485E-B1CB-3BE077164E16}.Debug|x64.Build.0 = Debug|x64
+		{8EFC74B7-ED7B-485E-B1CB-3BE077164E16}.Debug|x86.ActiveCfg = Debug|Win32
+		{8EFC74B7-ED7B-485E-B1CB-3BE077164E16}.Debug|x86.Build.0 = Debug|Win32
+		{8EFC74B7-ED7B-485E-B1CB-3BE077164E16}.Release|x64.ActiveCfg = Release|x64
+		{8EFC74B7-ED7B-485E-B1CB-3BE077164E16}.Release|x64.Build.0 = Release|x64
+		{8EFC74B7-ED7B-485E-B1CB-3BE077164E16}.Release|x86.ActiveCfg = Release|Win32
+		{8EFC74B7-ED7B-485E-B1CB-3BE077164E16}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

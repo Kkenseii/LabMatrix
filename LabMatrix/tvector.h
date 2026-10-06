@@ -3,13 +3,14 @@
 #include <stdexcept>
 #include <random>
 #include <algorithm>
+#include <utility>
 #include "memdata.h"
 
 template<typename T>
 class TVector {
     MemData<T> _mem;
-    size_t _front = 0;
-    size_t _back = 0;
+    mutable size_t _front = 0;
+    mutable size_t _back = 0;
 
     size_t normalize_index(size_t index) const {
         return (_front + index) % _mem._capacity;
@@ -21,11 +22,15 @@ class TVector {
         }
     }
 
-    void realloc_for_insert() {
-        if (!_mem.is_full()) return;
+    void make_contiguous() const {
+        if (_front + _mem._size > _mem._capacity) {
+            std::rotate(_mem._data, _mem._data + _front, _mem._data + _mem._capacity);
+            _front = 0;
+            _back = _mem._size - 1;
+        }
+    }
 
-        size_t new_capacity = calculate_capacity(_mem._capacity + 1);
-
+    void relocate(size_t new_capacity) {
         MemData<T> new_mem;
         new_mem.reset_memory(new_capacity);
 
@@ -37,39 +42,43 @@ class TVector {
         _back = _mem._size ? _mem._size - 1 : 0;
     }
 
+    void realloc_for_insert() {
+        if (!_mem.is_full()) return;
+
+        relocate(calculate_capacity(_mem._capacity + 1));
+    }
+
     void realloc_for_delete() {
-        if (_mem._capacity <= MEM_STEP) return;
-
-        if (_mem._size <= _mem._capacity - MEM_STEP) {
-            size_t new_capacity = calculate_capacity(_mem._size);
-
-            MemData<T> new_mem;
-            new_mem.reset_memory(new_capacity);
-
-            copy_to_linear(new_mem._data);
-            new_mem._size = _mem._size;
-
-            _mem = std::move(new_mem);
-            _front = 0;
-            _back = _mem._size ? _mem._size - 1 : 0;
+        if (_mem._capacity >= _mem._size + 2 * MEM_STEP) {
+            relocate(calculate_capacity(_mem._size));
         }
     }
 
 public:
     TVector() = default;
 
-    TVector(size_t size) : _mem(size), _front(0), _back(size ? size - 1 : 0) {}
+    explicit TVector(size_t size) : _mem(size), _front(0), _back(size ? size - 1 : 0) {}
 
     TVector(std::initializer_list<T> list)
         : _mem(list), _front(0), _back(list.size() ? list.size() - 1 : 0) {
     }
 
-    TVector(T* arr, size_t size)
-        : _mem(arr, size), _front(0), _back(size ? size - 1 : 0) {
+    TVector(const T* arr, size_t size)
+        : _mem(arr, size), _front(0) {
+        _back = _mem.size() ? _mem.size() - 1 : 0;
     }
 
-    TVector(const TVector& other)
-        : _mem(other._mem), _front(other._front), _back(other._back) {
+    TVector(const TVector& other) {
+        if (!other.is_empty()) {
+            MemData<T> m;
+            m.reset_memory(other._mem._capacity);
+            other.copy_to_linear(m._data);
+            m._size = other._mem._size;
+
+            _mem = std::move(m);
+            _front = 0;
+            _back = _mem._size - 1;
+        }
     }
 
     TVector(TVector&& other) noexcept
@@ -77,13 +86,11 @@ public:
         other._front = other._back = 0;
     }
 
-
     bool is_empty() const noexcept { return _mem._size == 0; }
     bool is_full() const noexcept { return _mem._size == _mem._capacity; }
 
     size_t size() const noexcept { return _mem._size; }
     size_t capacity() const noexcept { return _mem._capacity; }
-
 
     T& front() {
         if (is_empty()) throw std::out_of_range("empty");
@@ -95,12 +102,12 @@ public:
         return _mem._data[_back];
     }
 
-    T front() const {
+    const T& front() const {
         if (is_empty()) throw std::out_of_range("empty");
         return _mem._data[_front];
     }
 
-    T back() const {
+    const T& back() const {
         if (is_empty()) throw std::out_of_range("empty");
         return _mem._data[_back];
     }
@@ -110,12 +117,13 @@ public:
         return _mem._data[normalize_index(index)];
     }
 
-    T operator[](size_t index) const {
+    const T& operator[](size_t index) const {
         if (index >= _mem._size) throw std::out_of_range("index");
         return _mem._data[normalize_index(index)];
     }
 
-    void push_front(double value) {
+    void push_front(const T& value) {
+        T copy = value;
         realloc_for_insert();
 
         if (is_empty()) {
@@ -125,16 +133,17 @@ public:
             _front = (_front == 0 ? _mem._capacity - 1 : _front - 1);
         }
 
-        _mem._data[_front] = value;
+        _mem._data[_front] = copy;
         _mem._size++;
     }
 
-    void insert(double value, size_t pos) {
+    void insert(const T& value, size_t pos) {
         if (pos > _mem._size) throw std::out_of_range("pos");
 
         if (pos == 0) return push_front(value);
         if (pos == _mem._size) return push_back(value);
 
+        T copy = value;
         realloc_for_insert();
 
         if (pos < _mem._size / 2) {
@@ -156,7 +165,7 @@ public:
             }
         }
 
-        _mem._data[normalize_index(pos)] = value;
+        _mem._data[normalize_index(pos)] = copy;
         _mem._size++;
     }
 
@@ -202,16 +211,26 @@ public:
         }
     }
 
+    void clear() {
+        _mem.clear_memory();
+        _front = _back = 0;
+    }
+
+    void shrink_to_fit() {
+        if (_mem._capacity == _mem._size) return;
+        relocate(_mem._size);
+    }
+
     void sort() {
         if (_mem._size <= 1) return;
 
-        std::sort(_mem._data, _mem._data + _mem._size);
-
-        _front = 0;
-        _back = _mem._size - 1;
+        make_contiguous();
+        std::sort(_mem._data + _front, _mem._data + _front + _mem._size);
     }
 
     void shuffle() {
+        if (_mem._size < 2) return;
+
         static std::mt19937 gen(std::random_device{}());
 
         for (size_t i = _mem._size - 1; i > 0; i--) {
@@ -223,9 +242,8 @@ public:
 
     TVector& operator=(const TVector& other) {
         if (this != &other) {
-            _mem = other._mem;
-            _front = other._front;
-            _back = other._back;
+            TVector tmp(other);
+            *this = std::move(tmp);
         }
         return *this;
     }
@@ -240,7 +258,8 @@ public:
         return *this;
     }
 
-    void push_back(T value) {
+    void push_back(const T& value) {
+        T copy = value;
         realloc_for_insert();
 
         if (is_empty()) {
@@ -250,7 +269,7 @@ public:
             _back = (_back + 1) % _mem._capacity;
         }
 
-        _mem._data[_back] = value;
+        _mem._data[_back] = copy;
         _mem._size++;
     }
 
@@ -264,32 +283,30 @@ public:
         return os;
     }
 
-
     friend std::istream& operator>>(std::istream& is, TVector& v) {
         size_t n;
-        is >> n;
-        v = TVector();
+        if (!(is >> n)) return is;
+
+        TVector tmp;
         for (size_t i = 0; i < n; i++) {
             T x;
-            is >> x;
-            v.push_back(x);
+            if (!(is >> x)) return is;
+            tmp.push_back(x);
         }
+        v = std::move(tmp);
         return is;
     }
 
-    template <class Type> class Iterator;
-    typedef Iterator<T> iterator;
-
-    template <class T>
+    template <class Type>
     class Iterator {
     private:
-        T* p_cur;
+        Type* p_cur;
 
     public:
         Iterator() {
             p_cur = nullptr;
         }
-        Iterator(T* ptr) {
+        Iterator(Type* ptr) {
             p_cur = ptr;
         }
         Iterator(const Iterator& other) {
@@ -299,7 +316,6 @@ public:
         Iterator& operator=(const Iterator& other) noexcept {
             if (this != &other) {
                 p_cur = other.p_cur;
-                _mem = other._mem;
             }
             return *this;
         }
@@ -331,21 +347,50 @@ public:
             return temp;
         }
 
-        T& operator*() noexcept {
+        Iterator operator+(int n) const noexcept {
+            return Iterator(p_cur + n);
+        }
+        Iterator operator-(int n) const noexcept {
+            return Iterator(p_cur - n);
+        }
+        Iterator& operator+=(int n) noexcept {
+            p_cur += n;
+            return *this;
+        }
+        Iterator& operator-=(int n) noexcept {
+            p_cur -= n;
+            return *this;
+        }
+
+        Type& operator*() noexcept {
             return *p_cur;
         }
-        T& operator*() const noexcept {
+        Type& operator*() const noexcept {
             return *p_cur;
         }
     };
 
-    Iterator begin() noexcept;
-    Iterator end() noexcept;
+    typedef Iterator<T> iterator;
+    typedef Iterator<const T> const_iterator;
 
-    Iterator begin() const noexcept;
-    Iterator end() const noexcept;
+    iterator begin() noexcept {
+        make_contiguous();
+        return iterator(_mem._data + _front);
+    }
+    iterator end() noexcept {
+        make_contiguous();
+        return iterator(_mem._data + _front + _mem._size);
+    }
 
+    const_iterator begin() const noexcept {
+        make_contiguous();
+        return const_iterator(_mem._data + _front);
+    }
+    const_iterator end() const noexcept {
+        make_contiguous();
+        return const_iterator(_mem._data + _front + _mem._size);
+    }
+
+    const_iterator cbegin() const noexcept { return begin(); }
+    const_iterator cend() const noexcept { return end(); }
 };
-
-
-
