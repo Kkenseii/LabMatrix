@@ -6,7 +6,7 @@
 #include "memdata.h"
 #include "tvector.h"
 #include "tmathvector.h"
-
+#include "tmatrix.h"
 
 #define MEMDATA_TESTS 0
 #define VECTOR_TESTS 0
@@ -861,3 +861,78 @@ TEST(TMathVector, VectorOfVectorsAdds) {
 	EXPECT_EQ(s[0][1], 22);
 }
 
+#include "pch.h"
+#include "tmatrix.h"
+
+TEST(TMatrixInherited, SizeAndIndexing) {
+	TMatrix<int> m({ { 1, 2, 3 }, { 4, 5, 6 } });
+	EXPECT_EQ(m.size(), 2u);
+	EXPECT_EQ(m[0].size(), 3u);
+	EXPECT_EQ(m[1][2], 6);
+	m[0][1] = 20;
+	EXPECT_EQ(m[0][1], 20);
+	EXPECT_THROW(m[2], std::out_of_range);
+	EXPECT_THROW(m[0][3], std::out_of_range);
+}
+
+TEST(TMatrixInherited, AddAndSubtractGiveMatrix) {
+	TMatrix<int> a({ { 1, 2 }, { 3, 4 } });
+	TMatrix<int> b({ { 10, 20 }, { 30, 40 } });
+	TMatrix<int> s = a + b;
+	TMatrix<int> d = b - a;
+	EXPECT_TRUE(s == (TMatrix<int>({ { 11, 22 }, { 33, 44 } })));
+	EXPECT_TRUE(d == (TMatrix<int>({ { 9, 18 }, { 27, 36 } })));
+}
+
+TEST(TMatrixInherited, AddWithWrongShapeThrows) {
+	TMatrix<int> a({ { 1, 2 }, { 3, 4 } });
+	TMatrix<int> b({ { 1, 2, 3 }, { 4, 5, 6 } });
+	TMatrix<int> c({ { 1, 2 } });
+	EXPECT_THROW(a + b, std::invalid_argument);
+	EXPECT_THROW(a - c, std::invalid_argument);
+}
+
+TEST(TMatrixInherited, UnaryMinusAndCompoundOps) {
+	TMatrix<int> a({ { 1, -2 }, { 3, 4 } });
+	TMatrix<int> n = -a;
+	EXPECT_EQ(n[0][1], 2);
+	EXPECT_EQ(n[1][0], -3);
+	a += TMatrix<int>({ { 1, 1 }, { 1, 1 } });
+	EXPECT_EQ(a[0][0], 2);
+	a -= TMatrix<int>({ { 2, 2 }, { 2, 2 } });
+	EXPECT_EQ(a[0][0], 0);
+}
+
+TEST(TMatrixInherited, EqualityAndInequality) {
+	TMatrix<int> a({ { 1, 2 }, { 3, 4 } });
+	TMatrix<int> b({ { 1, 2 }, { 3, 4 } });
+	TMatrix<int> c({ { 1, 2 }, { 3, 5 } });
+	EXPECT_TRUE(a == b);
+	EXPECT_TRUE(a != c);
+}
+
+TEST(TMatrixInherited, RowOperationsOfTVector) {
+	TMatrix<int> m({ { 1, 2 }, { 3, 4 }, { 5, 6 } });
+	m.pop_back();
+	EXPECT_EQ(m.size(), 2u);
+	m.erase(0);
+	EXPECT_EQ(m[0][0], 3);
+	m.push_back(TMathVector<int>{ 7, 8 });
+	EXPECT_EQ(m.back()[1], 8);
+	m.shrink_to_fit();
+	EXPECT_EQ(m.capacity(), 2u);
+}
+
+TEST(TMatrixInherited, ConstructorsAndShape) {
+	TMatrix<int> z(2, 3);
+	EXPECT_EQ(z.size(), 2u);
+	EXPECT_EQ(z[1].size(), 3u);
+	EXPECT_EQ(z[1][2], 0);
+
+	TMatrix<int> e;
+	EXPECT_EQ(e.size(), 0u);
+
+	EXPECT_THROW((TMatrix<int>({ { 1, 2 }, { 3 } })), std::invalid_argument);
+	TMathVector<TMathVector<int>> bad{ TMathVector<int>{ 1, 2 }, TMathVector<int>{ 3 } };
+	EXPECT_THROW(TMatrix<int> m(bad), std::invalid_argument);
+}
