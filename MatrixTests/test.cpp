@@ -861,9 +861,6 @@ TEST(TMathVector, VectorOfVectorsAdds) {
 	EXPECT_EQ(s[0][1], 22);
 }
 
-#include "pch.h"
-#include "tmatrix.h"
-
 TEST(TMatrixInherited, SizeAndIndexing) {
 	TMatrix<int> m({ { 1, 2, 3 }, { 4, 5, 6 } });
 	EXPECT_EQ(m.size(), 2u);
@@ -935,4 +932,110 @@ TEST(TMatrixInherited, ConstructorsAndShape) {
 	EXPECT_THROW((TMatrix<int>({ { 1, 2 }, { 3 } })), std::invalid_argument);
 	TMathVector<TMathVector<int>> bad{ TMathVector<int>{ 1, 2 }, TMathVector<int>{ 3 } };
 	EXPECT_THROW(TMatrix<int> m(bad), std::invalid_argument);
+}
+
+TEST(TMatrix, RowsAndCols) {
+	TMatrix<int> m(3, 4);
+	EXPECT_EQ(m.rows(), 3u);
+	EXPECT_EQ(m.cols(), 4u);
+	TMatrix<int> e;
+	EXPECT_EQ(e.rows(), 0u);
+	EXPECT_EQ(e.cols(), 0u);
+}
+
+TEST(TMatrix, ScalarMultiplyAndDivide) {
+	TMatrix<double> a({ { 1.0, 2.0 }, { 3.0, 4.0 } });
+	TMatrix<double> m = a * 2.0;
+	TMatrix<double> m2 = 2.0 * a;
+	TMatrix<double> q = a / 2.0;
+	EXPECT_EQ(m[1][1], 8.0);
+	EXPECT_TRUE(m == m2);
+	EXPECT_EQ(q[0][0], 0.5);
+	EXPECT_EQ(a[0][0], 1.0);
+}
+
+TEST(TMatrix, MatrixProduct) {
+	TMatrix<int> a({ { 1, 2, 3 }, { 4, 5, 6 } });
+	TMatrix<int> b({ { 7, 8 }, { 9, 10 }, { 11, 12 } });
+	TMatrix<int> c = a * b;
+	EXPECT_EQ(c.rows(), 2u);
+	EXPECT_EQ(c.cols(), 2u);
+	EXPECT_TRUE(c == (TMatrix<int>({ { 58, 64 }, { 139, 154 } })));
+}
+
+TEST(TMatrix, ProductWithWrongShapeThrows) {
+	TMatrix<int> a(2, 3);
+	TMatrix<int> b(2, 3);
+	EXPECT_THROW(a * b, std::invalid_argument);
+}
+
+TEST(TMatrix, IdentityIsNeutral) {
+	TMatrix<int> a({ { 1, 2 }, { 3, 4 } });
+	TMatrix<int> i = TMatrix<int>::identity(2);
+	EXPECT_TRUE(a * i == a);
+	EXPECT_TRUE(i * a == a);
+	EXPECT_EQ(TMatrix<int>::identity(3)[2][2], 1);
+	EXPECT_EQ(TMatrix<int>::identity(3)[0][2], 0);
+}
+
+TEST(TMatrix, MatrixTimesVector) {
+	TMatrix<int> a({ { 1, 2 }, { 3, 4 }, { 5, 6 } });
+	TMathVector<int> v{ 1, 1 };
+	TMathVector<int> r = a * v;
+	EXPECT_TRUE(r == (TMathVector<int>{ 3, 7, 11 }));
+	EXPECT_THROW(a * (TMathVector<int>{ 1, 2, 3 }), std::invalid_argument);
+}
+
+TEST(TMatrix, Transpose) {
+	TMatrix<int> a({ { 1, 2, 3 }, { 4, 5, 6 } });
+	TMatrix<int> t = a.transposed();
+	EXPECT_EQ(t.rows(), 3u);
+	EXPECT_EQ(t.cols(), 2u);
+	EXPECT_EQ(t[2][0], 3);
+	EXPECT_EQ(t[0][1], 4);
+	EXPECT_TRUE(t.transposed() == a);
+}
+
+TEST(TMatrix, Determinant) {
+	EXPECT_NEAR((TMatrix<int>({ { 1, 2 }, { 3, 4 } })).determinant(), -2.0, 1e-9);
+	EXPECT_NEAR((TMatrix<int>({ { 2, 0, 0 }, { 0, 3, 0 }, { 0, 0, 4 } })).determinant(), 24.0, 1e-9);
+	EXPECT_NEAR((TMatrix<double>({ { 0.0, 1.0 }, { 1.0, 0.0 } })).determinant(), -1.0, 1e-9);
+	EXPECT_NEAR((TMatrix<int>({ { 1, 2 }, { 2, 4 } })).determinant(), 0.0, 1e-9);
+	EXPECT_NEAR((TMatrix<int>({ { 2, -3, 1 }, { 2, 0, -1 }, { 1, 4, 5 } })).determinant(), 49.0, 1e-9);
+	EXPECT_THROW((TMatrix<int>(2, 3)).determinant(), std::invalid_argument);
+}
+
+TEST(TMatrix, Inverse) {
+	TMatrix<double> a({ { 4.0, 7.0 }, { 2.0, 6.0 } });
+	TMatrix<double> inv = a.inverse();
+	TMatrix<double> p = a * inv;
+	for (size_t i = 0; i < 2; i++) {
+		for (size_t j = 0; j < 2; j++) {
+			EXPECT_NEAR(p[i][j], i == j ? 1.0 : 0.0, 1e-9);
+		}
+	}
+	EXPECT_NEAR(inv[0][0], 0.6, 1e-9);
+	EXPECT_THROW((TMatrix<int>({ { 1, 2 }, { 2, 4 } })).inverse(), std::runtime_error);
+	EXPECT_THROW((TMatrix<int>(2, 3)).inverse(), std::invalid_argument);
+}
+
+TEST(TMatrix, InverseNeedsRowSwap) {
+	TMatrix<int> a({ { 0, 1 }, { 1, 0 } });
+	TMatrix<double> inv = a.inverse();
+	EXPECT_NEAR(inv[0][1], 1.0, 1e-9);
+	EXPECT_NEAR(inv[0][0], 0.0, 1e-9);
+}
+
+TEST(TMatrix, Output) {
+	TMatrix<int> a({ { 1, 2 }, { 3, 4 } });
+	std::ostringstream os;
+	os << a;
+	EXPECT_EQ(os.str(), "[ 1 2 ]\n[ 3 4 ]");
+}
+
+TEST(TMatrix, AdditionResultWorksWithMatrixMethods) {
+	TMatrix<int> a({ { 1, 2 }, { 3, 4 } });
+	TMatrix<int> b = TMatrix<int>::identity(2);
+	TMatrix<int> c = (a + b) * a;
+	EXPECT_TRUE(c == (TMatrix<int>({ { 8, 12 }, { 18, 26 } })));
 }
